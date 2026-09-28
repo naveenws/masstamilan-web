@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MT Downloader - Web</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+</head>
+<body class="bg-gray-900 text-white font-sans min-h-screen p-6 md:p-10 flex items-center justify-center">
+    <div class="max-w-2xl w-full mx-auto bg-gray-800 p-8 rounded-2xl shadow-xl">
+        <h1 class="text-3xl font-bold mb-2 flex items-center gap-3">
+            <svg class="w-8 h-8 text-purple-500" fill="currentColor" viewBox="0 0 20 20"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.536l8-1.6V12.11A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"></path></svg>
+            MT Downloader Web
+        </h1>
+        <p class="text-gray-400 mb-8">Upload your CSV to automatically download all songs packed neatly into a <span class="text-purple-400 font-mono text-sm">.zip</span> file.</p>
+        
+        <div class="mb-6">
+            <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer bg-gray-700 rounded-xl">
+        </div>
+        
+        <button id="downloadBtn" onclick="startDownload()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center">
+            Start Download
+        </button>
+
+        <div id="statusMessage" class="mt-4 text-center text-sm font-semibold hidden"></div>
+    </div>
+
+    <script>
+        // UPDATE THIS URL TO YOUR RENDER URL AFTER DEPLOYMENT
+        const BACKEND_URL = "https://YOUR-RENDER-APP-URL.onrender.com/api/download";
+
+        async function startDownload() {
+            const fileInput = document.getElementById('csvFile');
+            const btn = document.getElementById('downloadBtn');
+            const status = document.getElementById('statusMessage');
+
+            if (!fileInput.files.length) {
+                alert('Please select a CSV file first!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing... This may take a few minutes.
+            `;
+            status.className = "mt-4 text-center text-sm font-semibold text-yellow-400 block";
+            status.innerText = "Connecting to Render Backend... Please wait.";
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = "masstamilan_songs.zip";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    
+                    status.className = "mt-4 text-center text-sm font-semibold text-green-400 block";
+                    status.innerText = "Success! Your .zip file is downloading.";
+                } else {
+                    const errData = await response.json();
+                    status.className = "mt-4 text-center text-sm font-semibold text-red-400 block";
+                    status.innerText = "Error: " + (errData.error || "Failed to download.");
+                }
+            } catch (err) {
+                status.className = "mt-4 text-center text-sm font-semibold text-red-400 block";
+                status.innerText = "Connection failed. Make sure your Render backend is running and you updated the BACKEND_URL in index.html.";
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = "Start Download";
+            }
+        }
+    </script>
+</body>
+</html>
